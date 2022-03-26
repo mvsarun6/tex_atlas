@@ -45,9 +45,7 @@ void wait_for_keypress()
     std::cin>>x;
 }
 
-
-
-/********************************************************/
+/*******************Class Imageinfo *************************************/
 class Imageinfo
 {
    private:
@@ -138,7 +136,7 @@ typedef struct FreeSpace
       uint_32 area()
       {
          return width*height;
-      }
+        }
 
       void display()
       {
@@ -174,86 +172,86 @@ typedef struct ImgCanvas
 
 int store_image(std::vector<Imageinfo> &images, uint_32 buffaddr, int buffwidth,int buffheight)
 {
+    int ret =0;
 
+    std::cout<<"\nImage processing inprogress....";
+    for(auto &img: images)
+    {
+       
+       uint_32 x = img.getxpos();
+       uint_32 y = img.getypos();
+    
+          png_image image;
+          /* Only the image structure version number needs to be set. */
+          memset(&image, 0, sizeof image);
+          image.version = PNG_IMAGE_VERSION;
+    
+          if(png_image_begin_read_from_file(&image, img.getfilepath().c_str() ))
+          {
+                   
+             png_bytep buffer;
+    
+             /* Change this to try different formats!  If you set a colormap format
+              * then you must also supply a colormap below.
+              */
+             image.format = PNG_FORMAT_RGBA;
+             
+             //std::cout<<"\n"<<img.getfilepath()<<" PNG image size : "<<PNG_IMAGE_SIZE(image)<<"\n";
+    
+             buffer = (png_bytep) malloc(PNG_IMAGE_SIZE(image));
+             if (buffer != NULL)
+             {
+                if (png_image_finish_read(&image, NULL/*background*/, buffer,
+                   0/*row_stride*/, NULL/*colormap for PNG_FORMAT_FLAG_COLORMAP */))
+                {
+                   for(int i=0;i<img.getheight();i++)
+                   {
+                      //std::cout<<".";
+                      //std::cout<<"Exit "<< i <<" : store_image";
+                      memcpy((void *)      (buffaddr+(x+(buffwidth*y))*BPP) ,     (void *)buffer,     img.getwidth()*BPP  );
+                      y++;
+                      buffer=buffer+(img.getwidth()*BPP);   
+                   }
+                   ret=1;
+    
+                }
+                else
+                {
+                   std::cout<<"Error : PNG to memory";
+                }
+    
+             }
+             else
+             {
+                std::cout<<"Error : PNG open";
+             }
+    
+          }
+          
+          png_image_free(&image);
+    }
 
-for(auto &img: images)
-{
-   
-   uint_32 x = img.getxpos();
-   uint_32 y = img.getypos();
-
-      png_image image;
-      /* Only the image structure version number needs to be set. */
-      memset(&image, 0, sizeof image);
-      image.version = PNG_IMAGE_VERSION;
-
-      if(png_image_begin_read_from_file(&image, img.getfilepath().c_str() ))
-      {
-               
-         png_bytep buffer;
-
-         /* Change this to try different formats!  If you set a colormap format
-          * then you must also supply a colormap below.
-          */
-         image.format = PNG_FORMAT_RGBA;
-         
-         std::cout<<"\n"<<img.getfilepath()<<" PNG image size : "<<PNG_IMAGE_SIZE(image)<<"\n";
-
-         buffer = (png_bytep) malloc(PNG_IMAGE_SIZE(image));
-         if (buffer != NULL)
-         {
-            if (png_image_finish_read(&image, NULL/*background*/, buffer,
-               0/*row_stride*/, NULL/*colormap for PNG_FORMAT_FLAG_COLORMAP */))
-            {
-               for(int i=0;i<img.getheight();i++)
-               {
-                  std::cout<<"Exit "<< i <<" : store_image";
-                  memcpy((void *)      (buffaddr+(x+(buffwidth*y))*BPP) ,     (void *)buffer,     img.getwidth()*BPP  );
-                  y++;
-                  buffer=buffer+(img.getwidth()*BPP);   
-               }
-
-            }
-            else
-            {
-               std::cout<<"Error : PNG to memory";
-            }
-
-         }
-         else
-         {
-            std::cout<<"Error : PNG open";
-         }
-
-      }
+    return ret;
       
-      png_image_free(&image);
-}
-      
-            std::cout<<"Exit F : store_image";
 }
 
 int main(int argc, char* argv[])
 {
     int ret;
 
-    //std::cout<<"\n\nC++ version = "<<__cplusplus<<std::endl;
-
    /* Check if there is any argument provided
       If no argument provided, return program with error message
    */
    if(argc<2){
-       std::cout<<"\nError : No path has been given, Exiting program....";
-      wait_for_keypress();
-    //  return 0;
+        std::cout<<"\nError : No path has been given, Exiting program....";
+        wait_for_keypress();
+        return 0;
     } 
-   //std::cout<<"Arg count = "<<argc<<std::endl; //For debugging, to be deleted
 
    /* Extract file name to a c++ string */
    string fpath =argv[1];
 
    std::vector<Imageinfo> imagefiles;
-   //std::cout<<"\nFile to be read = "<<fpath<<std::endl; //print path, For debugging, to be deleted
 
 
     for (const auto  &entry : std::filesystem::directory_iterator(fpath))
@@ -279,11 +277,10 @@ int main(int argc, char* argv[])
         }
     }
 
-   display(imagefiles);
+   //display(imagefiles);
    std::sort(imagefiles.begin(),imagefiles.end());
    std::reverse(imagefiles.begin(),imagefiles.end());
-   display(imagefiles);
-    
+   //display(imagefiles);
     
    ImgCanvas Canvas;
    FreeSpace CanvasFreespace;
@@ -297,203 +294,149 @@ int main(int argc, char* argv[])
    }
    
 
-  for(int i=0;i<imagefiles.size();i++)
-  {
-     
-   int locx=0;
-   int locy=Canvas.height;   
-
-   locCanH = get_MaxUndockHeight(imagefiles);
-   Canvas.length += locCanW*locCanH*BPP;
-   Canvas.width = locCanW; //do not modify
-   Canvas.height += locCanH;
-   std::cout<<"\ncanvas size ="<<Canvas.length<<" canvas width ="<<Canvas.width<<" canvas height ="<<Canvas.height;
-     
-   //PART 1
-   while(locx<Canvas.width)
-   {
-      int updated=0;
-      int widthavail = Canvas.width - locx;
-      for(auto &img : imagefiles )
-      {
-         if(!img.isdocked())
-         {
-            
-            if(img.getwidth()<=widthavail && locCanH>=img.getheight())
+    for(int i=0;i<imagefiles.size();i++)
+    {
+        int locx=0;
+        int locy=Canvas.height;   
+        
+        locCanH = get_MaxUndockHeight(imagefiles);
+        Canvas.length += locCanW*locCanH*BPP;
+        Canvas.width = locCanW; //do not modify
+        Canvas.height += locCanH;
+        //std::cout<<"\ncanvas size ="<<Canvas.length<<" canvas width ="<<Canvas.width<<" canvas height ="<<Canvas.height;
+        
+        //PART 1
+        while(locx<Canvas.width)
+        {
+            int updated=0;
+            int widthavail = Canvas.width - locx;
+            for(auto &img : imagefiles )
             {
-               img.setxpos(locx);
-               img.setypos(locy);
-               img.setdocked();
-               if(CanvasFreespace.area()< (locCanH-img.getheight()) * (Canvas.width-locx) )
-               {
-                  CanvasFreespace.xpos =  locx;
-                  CanvasFreespace.ypos = img.getheight();
-                  CanvasFreespace.width = Canvas.width-locx;
-                  CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
-               }
-               locx+=img.getwidth();
-               NoProcImg++;
-               updated=1;
-               break;
-            }
-         }
-      }
-
-      if(updated==0)
-      {
-         break;
-      }
-   }//WHILE  
-   //CanvasFreespace.display();
-   
-   //PART 2
-   locx=CanvasFreespace.xpos;
-   locy=CanvasFreespace.ypos;   
-   while(locx<Canvas.width)
-   {
-      int updated=0;
-      int widthavail = Canvas.width - locx;
-      for(auto &img : imagefiles )
-      {
-         if(!img.isdocked())
-         {
-            
-            if(img.getwidth()<=widthavail && locCanH>=(img.getheight()+locy))
+            if(!img.isdocked())
             {
-               img.setxpos(locx);
-               img.setypos(locy);
-               img.setdocked();
-               if(CanvasFreespace.area()< (locCanH-img.getheight()) * (Canvas.width-locx) )
-               {
-                  CanvasFreespace.xpos =  locx;
-                  CanvasFreespace.ypos = img.getheight();
-                  CanvasFreespace.width = Canvas.width-locx;
-                  CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
-               }
-               locx+=img.getwidth();
-               NoProcImg++;
-               updated=1;
-               break;
+                if(img.getwidth()<=widthavail && locCanH>=img.getheight())
+                {
+                    img.setxpos(locx);
+                    img.setypos(locy);
+                    img.setdocked();
+                    if((CanvasFreespace.area()*1.5)< (locCanH-img.getheight()) * (Canvas.width-locx) )
+                    {
+                        CanvasFreespace.xpos =  locx;
+                        CanvasFreespace.ypos = img.getheight();
+                        CanvasFreespace.width = Canvas.width-locx;
+                        CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+                    }
+                    locx+=img.getwidth();
+                    NoProcImg++;
+                    updated=1;
+                    break;
+                }
             }
-         }
-      }
-
-      if(updated==0)
-      {
-         break;
-      }
-   }//WHILE 
-
-  }
+        }
+    
+        if(updated==0)
+        {
+            break;
+        }
+    }//WHILE  
+    
+    //CanvasFreespace.display();
+    
+        //PART 2            
+        locx=CanvasFreespace.xpos;
+        locy=CanvasFreespace.ypos;   
+        while(locx<Canvas.width)
+        {
+            int updated=0;
+            int widthavail = Canvas.width - locx;
+            for(auto &img : imagefiles )
+            {
+                if(!img.isdocked())
+                {
+                    
+                    if(img.getwidth()<=widthavail && locCanH>=(img.getheight()+locy))
+                    {
+                        img.setxpos(locx);
+                        img.setypos(locy);
+                        img.setdocked();
+                        if((CanvasFreespace.area()*1.5)< (locCanH-img.getheight()) * (Canvas.width-locx) )
+                        {
+                            CanvasFreespace.xpos =  locx;
+                            CanvasFreespace.ypos = img.getheight();
+                            CanvasFreespace.width = Canvas.width-locx;
+                            CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+                        }
+                        locx+=img.getwidth();
+                        NoProcImg++;
+                        updated=1;
+                        break;
+                    }
+                }
+            }
+        
+            if(updated==0)
+            {
+                break;
+            }
+        }//WHILE 
+    
+    
+    }//mainforloop
   
-   display(imagefiles);
+    //display(imagefiles);
+    
+    
+    void *text_atlas_buff = malloc(Canvas.width*Canvas.height*BPP);
+    memset(text_atlas_buff,0xFF, Canvas.width*Canvas.height*BPP);
+    
+    if(!store_image(imagefiles, (uint_32) text_atlas_buff,Canvas.width,Canvas.height))
+    {
+         std::cout<<"ERROR : store image\n";
+         wait_for_keypress();
+         free(text_atlas_buff);
+         return 0;
+    }
+
    
-
-   void *text_atlas_buff = malloc(Canvas.width*Canvas.height*BPP);
-   memset(text_atlas_buff,0xFF, Canvas.width*Canvas.height*BPP);
-   
-   store_image(imagefiles, (uint_32) text_atlas_buff,Canvas.width,Canvas.height);
-
-   
-char * outfile = argv[1];
-strcat(outfile,"tex_atlas.png");
-std::cout<<"\n\nout path :"<<outfile<<"\n";
-
-display(imagefiles);
+    char * outfile = argv[1];
+    strcat(outfile,"texture_atlas.png");
+    std::cout<<"\n\nout path :"<<outfile<<"\n";
+    
+    display(imagefiles);
 
 
 
 
-      png_image image;
-      /* Only the image structure version number needs to be set. */
-      memset(&image, 0, sizeof image);
-      image.version = PNG_IMAGE_VERSION;
+    png_image image;
+    /* Only the image structure version number needs to be set. */
+    memset(&image, 0, sizeof image);
+    image.version = PNG_IMAGE_VERSION;
+    
+    png_image_begin_read_from_file(&image, imagefiles[1].getfilepath().c_str());
+    
+    image.height = Canvas.height;
+    image.width = Canvas.width;
 
-      png_image_begin_read_from_file(&image, imagefiles[1].getfilepath().c_str());
-
-      image.height = Canvas.height;
-      image.width = Canvas.width;
-
-  // if(png_image_begin_read_from_memory(&image,   text_atlas_buff, Canvas.width*Canvas.height*BPP))
-   {
-        std::cout<<"height ="<<image.height<<" width ="<<image.width<<std::endl;
-
+    // if(png_image_begin_read_from_memory(&image,   text_atlas_buff, Canvas.width*Canvas.height*BPP))
+    {
+        std::cout<<"\nImage processing inprogress....";
         if ( png_image_write_to_file(&image,outfile ,
                   0/*convert_to_8bit*/, text_atlas_buff, 0/*row_stride*/,
                   NULL/*colormap*/) )
-                  {
-
-                  }
-               else
-               { 
-                  std::cout<<"ERROR : pngtopng: write\n";
-               }
-   }
-    //else
-      { 
-          // std::cout<<"ERROR : pngtopng: read mem\n";
-     }
-
-
-
-   /**********************************************/
-
-     // png_image image;
-      /* Only the image structure version number needs to be set. */
-      memset(&image, 0, sizeof image);
-      image.version = PNG_IMAGE_VERSION;
-
-    int result = 1;
-
-      if (png_image_begin_read_from_file(&image, argv[1]))
-      {
-
-        std::cout<<"height ="<<image.height<<" width ="<<image.width<<std::endl;
-         png_bytep buffer;
-
-         /* Change this to try different formats!  If you set a colormap format
-          * then you must also supply a colormap below.
-          */
-         image.format = PNG_FORMAT_RGBA;
-
-         buffer = (png_bytep) malloc(PNG_IMAGE_SIZE(image));
-
-         if (buffer != NULL)
          {
-            if (png_image_finish_read(&image, NULL/*background*/, buffer,
-               0/*row_stride*/, NULL/*colormap for PNG_FORMAT_FLAG_COLORMAP */))
-            {
-               if (png_image_write_to_file(&image, argv[2],
-                  0/*convert_to_8bit*/, buffer, 0/*row_stride*/,
-                  NULL/*colormap*/))
-                  result = 0;
+            std::cout<<"\nOutput image saved :";
+            std::cout<<" width ="<<image.width<<"  height ="<<image.height<<std::endl;
 
-               else
-                  fprintf(stderr, "pngtopng: write %s: %s\n", argv[2],
-                      image.message);
-            }
-
-            else
-               fprintf(stderr, "pngtopng: read %s: %s\n", argv[1],
-                   image.message);
-
-            free(buffer);
          }
-
          else
-         {
-            fprintf(stderr, "pngtopng: out of memory: %lu bytes\n",
-               (unsigned long)PNG_IMAGE_SIZE(image));
-
-            /* This is the only place where a 'free' is required; libpng does
-             * the cleanup on error and success, but in this case we couldn't
-             * complete the read because of running out of memory and so libpng
-             * has not got to the point where it can do cleanup.
-             */
-            png_image_free(&image);
+         { 
+             std::cout<<"ERROR : png write\n";
          }
-      }
+    }
 
-wait_for_keypress();
-return 0;
+
+    free(text_atlas_buff);
+
+    wait_for_keypress();
+    return 0;
 }
