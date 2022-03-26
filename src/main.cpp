@@ -245,7 +245,7 @@ int main(int argc, char* argv[])
    if(argc<2){
        std::cout<<"\nError : No path has been given, Exiting program....";
       wait_for_keypress();
-      return 0;
+    //  return 0;
     } 
    //std::cout<<"Arg count = "<<argc<<std::endl; //For debugging, to be deleted
 
@@ -324,7 +324,6 @@ int main(int argc, char* argv[])
                img.setxpos(locx);
                img.setypos(locy);
                img.setdocked();
-               locx+=img.getwidth();
                if(CanvasFreespace.area()< (locCanH-img.getheight()) * (Canvas.width-locx) )
                {
                   CanvasFreespace.xpos =  locx;
@@ -332,6 +331,7 @@ int main(int argc, char* argv[])
                   CanvasFreespace.width = Canvas.width-locx;
                   CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
                }
+               locx+=img.getwidth();
                NoProcImg++;
                updated=1;
                break;
@@ -358,12 +358,11 @@ int main(int argc, char* argv[])
          if(!img.isdocked())
          {
             
-            if(img.getwidth()<=widthavail && locCanH>=img.getheight())
+            if(img.getwidth()<=widthavail && locCanH>=(img.getheight()+locy))
             {
                img.setxpos(locx);
                img.setypos(locy);
                img.setdocked();
-               locx+=img.getwidth();
                if(CanvasFreespace.area()< (locCanH-img.getheight()) * (Canvas.width-locx) )
                {
                   CanvasFreespace.xpos =  locx;
@@ -371,6 +370,7 @@ int main(int argc, char* argv[])
                   CanvasFreespace.width = Canvas.width-locx;
                   CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
                }
+               locx+=img.getwidth();
                NoProcImg++;
                updated=1;
                break;
