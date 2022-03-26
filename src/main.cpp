@@ -83,6 +83,24 @@ class Imageinfo
       bool isdocked()            {         return docked;      }
       uint_32 getxpos()          {         return xpos;        }
       uint_32 getypos()          {         return ypos;        }
+
+      
+      string getfilename()       {   
+         string tempstr =   filepath;  
+         
+         int pos=0;
+         int i=0;
+         for(auto it = tempstr.begin();it!=tempstr.end();it++)
+         {
+            if(*it=='\\' || *it=='//')
+            {
+               pos= i;
+            }
+            i++;
+         } 
+         tempstr.erase(tempstr.begin(),tempstr.begin()+pos+1);
+         return tempstr;    
+         }
       
 
       bool operator<(Imageinfo &obj2)
@@ -397,9 +415,10 @@ int main(int argc, char* argv[])
          return 0;
     }
 
-   
+   #define TEX_ATLAS_NAME "texture_atlas.png"
+
     char * outfile = argv[1];
-    strcat(outfile,"texture_atlas.png");
+    strcat(outfile,TEX_ATLAS_NAME);
     std::cout<<"\n\nout path :"<<outfile<<"\n";
     
     display(imagefiles);
@@ -433,10 +452,47 @@ int main(int argc, char* argv[])
              std::cout<<"ERROR : png write\n";
          }
     }
-
-
     free(text_atlas_buff);
 
-    wait_for_keypress();
+
+    /********************Metadata*************************/
+    string metadatafilename = "texture_atlas_metadata.txt";
+
+   //ofstream metafile (fpath+ metadatafilename);
+   ofstream metafile (metadatafilename);
+
+   if (!metafile.is_open())
+   {
+       std::cout <<"ERROR : Unable to open file";
+
+   }
+
+   metafile << "Texture atlas name : "<<TEX_ATLAS_NAME<<"\n";
+   metafile << "Width              : "<<Canvas.width<<"\n";
+   metafile << "Height             : "<<Canvas.height<<"\n";   
+   metafile << "Number of Pixels   : "<<Canvas.width*Canvas.height<<"\n";
+   metafile << "Number of Textures : "<<imagefiles.size()<<"\n";
+   metafile<<"\n\n";
+
+   for(int i=0;i<imagefiles.size();i++)
+   {
+      metafile<<"Texture "<<i<<":"<<"\n";
+      metafile<<"{\n";
+      metafile << "    Name   : "<<imagefiles[i].getfilename()<<"\n";
+      metafile << "    width  : "<<imagefiles[i].getwidth()<<"\n";
+      metafile << "    height : "<<imagefiles[i].getheight()<<"\n"; 
+      metafile << "    xpos   : "<<imagefiles[i].getxpos()<<"\n";
+      metafile << "    ypos   : "<<imagefiles[i].getypos()<<"\n";
+      metafile<<"},\n"; 
+   }
+
+      metafile<<"\b\b";
+      metafile<<"\n"; 
+
+      metafile.close();
+      std::cout<<"\nMetadata exported";
+      std::cout<<"\nPROGRAM ENDS";
+
+      wait_for_keypress();
     return 0;
 }
