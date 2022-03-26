@@ -18,6 +18,8 @@
 #include <sstream> //for stringstream
 #include <algorithm> //for find, count_if
 
+#include <filesystem>
+
 
 
 //libpng
@@ -28,9 +30,13 @@ extern "C"
   #include <stdlib.h>
   #include <string.h>
   #include <stdio.h>
+  #include <math.h>
 }
 
 using namespace std;
+
+typedef unsigned int uint_32;
+typedef unsigned char uint_8;
 
 void wait_for_keypress()
 {
@@ -39,43 +45,297 @@ void wait_for_keypress()
     std::cin>>x;
 }
 
+
+
+/********************************************************/
+class Imageinfo
+{
+   private:
+      string filepath;
+      uint_32 width;
+      uint_32 height;
+      bool docked;
+      uint_32 xpos;
+      uint_32 ypos;
+ 
+   public:
+      
+      Imageinfo():
+      filepath{"NA"}, width{0},height{0},docked{0},xpos{0},ypos{0}
+      {
+      }
+      
+      Imageinfo(string str, uint_32 w, uint_32 h):
+      filepath{str}, width{w},height{h},docked{0},xpos{0},ypos{0}
+      {
+      }
+
+      ~Imageinfo()=default;
+
+      void setfilepath(string str)  {         filepath = str;  }
+      void setwidth(uint_32 w)      {         width = w;       }
+      void setheight(uint_32 h)     {         height = h;      }
+      void setdocked()              {         docked = 1;      }
+      void setxpos(uint_32 x)       {         xpos = x;        }
+      void setypos(uint_32 y)       {         ypos = y;        }
+
+      string getfilepath()       {         return filepath;    }
+      uint_32 getwidth()         {         return width;       }
+      uint_32 getheight()        {         return height;      }
+      bool isdocked()            {         return docked;      }
+      uint_32 getxpos()          {         return xpos;        }
+      uint_32 getypos()          {         return ypos;        }
+      
+
+      bool operator<(Imageinfo &obj2)
+      {
+         return (height<obj2.height);
+      }
+      bool operator==(Imageinfo &obj2)
+      {
+         return (height==obj2.height);
+      }
+};
+
+
+void display(std::vector<Imageinfo> &obj)
+{
+    std::cout <<"\n-----display:\n";
+    for (auto &filen : obj)
+    {
+        std::cout << filen.getfilepath() <<"\t\tw/h:"<<filen.getwidth() <<","<<filen.getheight() 
+                  << "\t\tx/y:"<<filen.getxpos()<<","<<filen.getypos()<<" dock:"<<filen.isdocked()<<std::endl;
+    }
+    std::cout <<"-----END-----\n";
+}
+
+int get_MaxUndockHeight(std::vector<Imageinfo> &obj)
+{
+   int maxh =0;
+    for (auto &filen : obj)
+    {
+        if(!filen.isdocked() && maxh<filen.getheight())
+        {
+           maxh = filen.getheight();
+        }
+    }
+    return maxh;
+}
+
+/********************************************************/
+typedef struct FreeSpace
+{
+      uint_32 xpos;
+      uint_32 ypos;
+      uint_32 width;
+      uint_32 height;
+
+      FreeSpace():
+      xpos{0},ypos{0},width{0},height{0}
+      {         
+      }
+
+      uint_32 area()
+      {
+         return width*height;
+      }
+
+      void display()
+      {
+         std::cout<<"\nFreespace display x:"<< xpos<<" y:"<<ypos<<" w:"<<width<<" h:"<<height<<"\n";
+      }
+
+}FreeSpace;
+
+
+typedef struct ImgCanvas
+{
+  void   *buffer;
+  size_t length;
+  uint_32 width;
+  uint_32 height;
+
+  ImgCanvas():
+  buffer{NULL},length{0},width{0},height{0}
+  {
+  }
+
+  ~ImgCanvas()
+  {
+     delete[] buffer;
+  }
+
+}ImgCanvas;
+
+/********************************************************/
+
+#define BPP 4
+
 int main(int argc, char* argv[])
 {
-int ret;
+    int ret;
 
-//std::cout<<"\n\nC++ version = "<<__cplusplus<<std::endl;
+    //std::cout<<"\n\nC++ version = "<<__cplusplus<<std::endl;
 
-/* Check if there is any argument provided
-   If no argument provided, return program with error message
-*/
-if(argc<2){
-    std::cout<<"\nError : No path has been given, Exiting program....";
-    wait_for_keypress();
-    return 0;
-}
-//std::cout<<"Arg count = "<<argc<<std::endl; //For debugging, to be deleted
+   /* Check if there is any argument provided
+      If no argument provided, return program with error message
+   */
+   if(argc<2){
+       std::cout<<"\nError : No path has been given, Exiting program....";
+      wait_for_keypress();
+      return 0;
+    } 
+   //std::cout<<"Arg count = "<<argc<<std::endl; //For debugging, to be deleted
 
-/* Extract file name to a c++ string */
-char pathcbuffer[255];
-char *ptr = argv[1];
-strcpy(pathcbuffer,ptr);
-string fpath = pathcbuffer;
+   /* Extract file name to a c++ string */
+   string fpath =argv[1];
 
-std::cout<<"\nFile to be read = "<<fpath<<std::endl; //print path, For debugging, to be deleted
+   std::vector<Imageinfo> imagefiles;
+   //std::cout<<"\nFile to be read = "<<fpath<<std::endl; //print path, For debugging, to be deleted
 
 
+    for (const auto  &entry : std::filesystem::directory_iterator(fpath))
+    {
+        string tempfile = entry.path().string();        
+        if( tempfile.compare( (tempfile.end()-4)-tempfile.begin(),4,".png") ==0  || tempfile.compare((tempfile.end()-4)-tempfile.begin(),4,".PNG")==0)
+        {
+            png_image image;
+            /* Only the image structure version number needs to be set. */
+            memset(&image, 0, sizeof image);
+            image.version = PNG_IMAGE_VERSION;
+
+            if(png_image_begin_read_from_file(&image, tempfile.c_str()))
+            {
+               Imageinfo tempimg(tempfile, image.width, image.height);
+               imagefiles.push_back(tempimg);
+               png_image_free(&image);
+            }
+            else
+            {
+               std::cout<<"Error - png file read failed : "<<tempfile<<std::endl;
+            }
+        }
+    }
+
+   display(imagefiles);
+   std::sort(imagefiles.begin(),imagefiles.end());
+   std::reverse(imagefiles.begin(),imagefiles.end());
+   display(imagefiles);
+    
+    
+   ImgCanvas Canvas;
+   FreeSpace CanvasFreespace;
+
+   int NoProcImg =0;
+   uint_32 locCanW=0;
+   uint_32 locCanH=0;
+   for(int i=0;i<sqrt(imagefiles.size());i++)
+   {
+      locCanW+=imagefiles[i].getwidth();      
+   }
+
+   locCanH = get_MaxUndockHeight(imagefiles);
+
+
+   Canvas.length = locCanW*locCanH*BPP;
+   Canvas.buffer = static_cast<void *>  (new char[Canvas.length]);
+   Canvas.width = locCanW;
+   Canvas.height = locCanH;
+   std::cout<<"\ncanvas size ="<<Canvas.length<<" canvas width ="<<Canvas.width<<" canvas height ="<<Canvas.height;
 
 
 
+     
+   //PART 1
+   int locx=CanvasFreespace.xpos;
+   int locy=CanvasFreespace.ypos;   
+   while(locx<Canvas.width)
+   {
+      int updated=0;
+      int widthavail = Canvas.width - locx;
+      for(auto &img : imagefiles )
+      {
+         if(!img.isdocked())
+         {
+            
+            if(img.getwidth()<=widthavail && locCanH>=img.getheight())
+            {
+               img.setxpos(locx);
+               img.setypos(locy);
+               img.setdocked();
+               locx+=img.getwidth();
+               if(CanvasFreespace.area()< (locCanH-img.getheight()) * (Canvas.width-locx) )
+               {
+                  CanvasFreespace.xpos =  locx;
+                  CanvasFreespace.ypos = img.getheight();
+                  CanvasFreespace.width = Canvas.width-locx;
+                  CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+               }
+               NoProcImg++;
+               updated=1;
+               break;
+            }
+         }
+      }
 
+      if(updated==0)
+      {
+         break;
+      }
+   }//WHILE  
+   CanvasFreespace.display();
+   
+   //PART 2
+   locx=CanvasFreespace.xpos;
+   locy=CanvasFreespace.ypos;   
+   while(locx<Canvas.width)
+   {
+      int updated=0;
+      int widthavail = Canvas.width - locx;
+      for(auto &img : imagefiles )
+      {
+         if(!img.isdocked())
+         {
+            
+            if(img.getwidth()<=widthavail && locCanH>=img.getheight())
+            {
+               img.setxpos(locx);
+               img.setypos(locy);
+               img.setdocked();
+               locx+=img.getwidth();
+               if(CanvasFreespace.area()< (locCanH-img.getheight()) * (Canvas.width-locx) )
+               {
+                  CanvasFreespace.xpos =  locx;
+                  CanvasFreespace.ypos = img.getheight();
+                  CanvasFreespace.width = Canvas.width-locx;
+                  CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+               }
+               NoProcImg++;
+               updated=1;
+               break;
+            }
+         }
+      }
+
+      if(updated==0)
+      {
+         break;
+      }
+   }//WHILE 
+   CanvasFreespace.display();
+
+   display(imagefiles);
+
+
+
+   /**********************************************/
 
       png_image image;
-
       /* Only the image structure version number needs to be set. */
       memset(&image, 0, sizeof image);
       image.version = PNG_IMAGE_VERSION;
 
-   int result = 1;
+    int result = 1;
 
       if (png_image_begin_read_from_file(&image, argv[1]))
       {
