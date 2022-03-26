@@ -301,7 +301,6 @@ int main(int argc, char* argv[])
    //display(imagefiles);
     
    ImgCanvas Canvas;
-   FreeSpace CanvasFreespace;
 
    int NoProcImg =0;
    uint_32 locCanW=0;
@@ -315,7 +314,8 @@ int main(int argc, char* argv[])
     for(int i=0;i<imagefiles.size();i++)
     {
         int locx=0;
-        int locy=Canvas.height;   
+        int locy=Canvas.height;  
+        FreeSpace CanvasFreespace; 
         
         locCanH = get_MaxUndockHeight(imagefiles);
         Canvas.length += locCanW*locCanH*BPP;
