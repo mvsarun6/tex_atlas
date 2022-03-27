@@ -184,7 +184,7 @@ typedef struct ImgCanvas
 
 
 
-int store_image(std::vector<Imageinfo> &images, uint_32 buffaddr, int buffwidth,int buffheight)
+int store_image(std::vector<Imageinfo> &images, unsigned long buffaddr, int buffwidth,int buffheight)
 {
     int ret =0;
 
@@ -416,7 +416,7 @@ int main(int argc, char* argv[])
     }
     memset(text_atlas_buff,0xFF, Canvas.width*Canvas.height*BPP);
     
-    if(!store_image(imagefiles, (uint_32) text_atlas_buff,Canvas.width,Canvas.height))
+    if(!store_image(imagefiles, (unsigned long) text_atlas_buff,Canvas.width,Canvas.height))
     {
          std::cout<<"ERROR : store image\n";
          wait_for_keypress();
@@ -426,7 +426,7 @@ int main(int argc, char* argv[])
 
 
     string outfile(argv[1]);
-    outfile.append("\\");
+    outfile.append("//");
     outfile.append(TEX_ATLAS_NAME);
     std::cout<<"\n\nTexture atlas output path :"<<outfile<<"\n";
     
@@ -458,7 +458,7 @@ int main(int argc, char* argv[])
     /********************Metadata Export*************************/
 
     string metadatafilename(fpath);
-    metadatafilename.append("\\");
+    metadatafilename.append("//");
     metadatafilename.append(METADATA_FILE);
 
    //std::cout<<"\n"<<metadatafilename;

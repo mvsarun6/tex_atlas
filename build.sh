@@ -1,4 +1,4 @@
 cd build
-mingw32-make all
+#mingw32-make all
 #ninja all
-#make all
+make all
