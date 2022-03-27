@@ -1,4 +1,4 @@
 cd bin
-tex_atlas.exe f:\git\tex_atlas\images
+tex_atlas.exe f:\git\tex_atlas\test_images
 
 pause

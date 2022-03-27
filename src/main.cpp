@@ -38,12 +38,9 @@ using namespace std;
 typedef unsigned int uint_32;
 typedef unsigned char uint_8;
 
-void wait_for_keypress()
-{
-    int x;
-    std::cout<<"\n\n\nPress any key and enter to exit........";
-    std::cin>>x;
-}
+#define METADATA_FILE "texture_atlas_metadata.txt"
+#define TEX_ATLAS_NAME "texture_atlas.png"
+#define BPP 4
 
 /*******************Class Imageinfo *************************************/
 class Imageinfo
@@ -183,7 +180,6 @@ typedef struct ImgCanvas
 
 /********************************************************/
 
-#define BPP 4
 
 
 
@@ -253,6 +249,13 @@ int store_image(std::vector<Imageinfo> &images, uint_32 buffaddr, int buffwidth,
       
 }
 
+void wait_for_keypress()
+{
+    int x;
+    std::cout<<"\n\n\nPress any key and enter to exit........";
+    std::cin>>x;
+}
+
 int main(int argc, char* argv[])
 {
     int ret;
@@ -267,7 +270,7 @@ int main(int argc, char* argv[])
     } 
 
    /* Extract file name to a c++ string */
-   string fpath =argv[1];
+   string fpath (argv[1]);
 
    std::vector<Imageinfo> imagefiles;
 
@@ -404,6 +407,13 @@ int main(int argc, char* argv[])
     
     
     void *text_atlas_buff = malloc(Canvas.width*Canvas.height*BPP);
+       std::cout<<"\nAllocate "<<Canvas.width*Canvas.height*BPP<<" bytes";
+    if(text_atlas_buff==NULL)
+    {
+       std::cout<<"ERROR : memory allocation failed\n";
+       wait_for_keypress();
+       return 0;
+    }
     memset(text_atlas_buff,0xFF, Canvas.width*Canvas.height*BPP);
     
     if(!store_image(imagefiles, (uint_32) text_atlas_buff,Canvas.width,Canvas.height))
@@ -414,17 +424,15 @@ int main(int argc, char* argv[])
          return 0;
     }
 
-   #define TEX_ATLAS_NAME "texture_atlas.png"
 
-    char * outfile = argv[1];
-    strcat(outfile,"\\");
-    strcat(outfile,TEX_ATLAS_NAME);
+    string outfile(argv[1]);
+    outfile.append("\\");
+    outfile.append(TEX_ATLAS_NAME);
     std::cout<<"\n\nTexture atlas output path :"<<outfile<<"\n";
     
     std::filesystem::remove(outfile);
     
     display(imagefiles);
-
 
     png_image exportimage;
     /* Only the image structure version number needs to be set. */
@@ -435,7 +443,7 @@ int main(int argc, char* argv[])
     exportimage.width = Canvas.width;
 
     std::cout<<"\nImage processing inprogress....";
-    if(png_image_write_to_file(&exportimage,outfile , 0/*convert to 8bit*/, text_atlas_buff, 0/*stride*/, NULL/*col map*/) )
+    if(png_image_write_to_file(&exportimage,outfile.c_str() , 0/*convert to 8bit*/, text_atlas_buff, 0/*stride*/, NULL/*col map*/) )
     {
         std::cout<<"\nOutput texture atlas saved at : "<<outfile;
         std::cout<<"\nWidth ="<<exportimage.width<<"  Height ="<<exportimage.height;
@@ -448,13 +456,18 @@ int main(int argc, char* argv[])
     png_image_free(&exportimage);
 
     /********************Metadata Export*************************/
-    string metadatafilename = "texture_atlas_metadata.txt";
 
-   ofstream metafile (fpath+"/"+metadatafilename);
-   //ofstream metafile (metadatafilename);
+    string metadatafilename(fpath);
+    metadatafilename.append("\\");
+    metadatafilename.append(METADATA_FILE);
+
+   //std::cout<<"\n"<<metadatafilename;
+   ofstream metafile (metadatafilename);
    if (!metafile.is_open())
    {
-       std::cout <<"ERROR : Unable to open file";
+      std::cout <<"\nERROR : Unable to open file";
+      wait_for_keypress();
+      return 0;
 
    }
 
@@ -481,9 +494,10 @@ int main(int argc, char* argv[])
       metafile<<"\n"; 
 
       metafile.close();
-      std::cout<<"\nMetadata exported";
+      std::cout<<"\n\nMetadata exported at : "<<metadatafilename;
       std::cout<<"\n\n---PROGRAM ENDS---\n\n";
 
       wait_for_keypress();
+
     return 0;
 }
