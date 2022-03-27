@@ -116,13 +116,13 @@ class Imageinfo
 
 void display(std::vector<Imageinfo> &obj)
 {
-    std::cout <<"\n-----display:\n";
+    std::cout <<"\n-----display texture names:\n";
     for (auto &filen : obj)
     {
-        std::cout << filen.getfilepath() <<"\t\tw/h:"<<filen.getwidth() <<","<<filen.getheight() 
-                  << "\t\tx/y:"<<filen.getxpos()<<","<<filen.getypos()<<" dock:"<<filen.isdocked()<<std::endl;
+        std::cout << filen.getfilename() <<"\t\tw/h:"<<filen.getwidth() <<","<<filen.getheight() 
+                  << "\t\tx/y:"<<filen.getxpos()<<","<<filen.getypos()<<"   dock:"<<filen.isdocked()<<std::endl;
     }
-    std::cout <<"-----END-----\n";
+    //std::cout <<"-----display end-----\n";
 }
 
 int get_MaxUndockHeight(std::vector<Imageinfo> &obj)
@@ -309,10 +309,9 @@ int main(int argc, char* argv[])
    {
       locCanW+=imagefiles[i].getwidth();  //do not modify locCanW here after     
    }
-   
 
-    for(int i=0;i<imagefiles.size();i++)
-    {
+   for(int i=0;i<imagefiles.size();i++) //Main For Loop
+   {
         int locx=0;
         int locy=Canvas.height;  
         FreeSpace CanvasFreespace; 
@@ -338,27 +337,27 @@ int main(int argc, char* argv[])
                     img.setypos(locy);
                     img.setdocked();
                     if((CanvasFreespace.area()*1.5)< (locCanH-img.getheight()) * (Canvas.width-locx) )
-                    {
-                        CanvasFreespace.xpos =  locx;
-                        CanvasFreespace.ypos = img.getheight();
-                        CanvasFreespace.width = Canvas.width-locx;
-                        CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
-                    }
-                    locx+=img.getwidth();
-                    NoProcImg++;
-                    updated=1;
-                    break;
+                       {
+                           CanvasFreespace.xpos =  locx;
+                           CanvasFreespace.ypos = img.getheight();
+                           CanvasFreespace.width = Canvas.width-locx;
+                           CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+                       }
+                       locx+=img.getwidth();
+                       NoProcImg++;
+                       updated=1;
+                       break;
+                   }
                 }
             }
-        }
     
-        if(updated==0)
-        {
-            break;
-        }
-    }//WHILE  
+            if(updated==0)
+            {
+                break;
+            }
+        }//WHILE    
     
-    //CanvasFreespace.display();
+        //CanvasFreespace.display();
     
         //PART 2            
         locx=CanvasFreespace.xpos;
@@ -388,15 +387,15 @@ int main(int argc, char* argv[])
                         NoProcImg++;
                         updated=1;
                         break;
-                    }
+                   }
                 }
             }
-        
+    
             if(updated==0)
             {
                 break;
-            }
-        }//WHILE 
+             }
+        }//WHILE  
     
     
     }//mainforloop
@@ -418,49 +417,41 @@ int main(int argc, char* argv[])
    #define TEX_ATLAS_NAME "texture_atlas.png"
 
     char * outfile = argv[1];
+    strcat(outfile,"\\");
     strcat(outfile,TEX_ATLAS_NAME);
-    std::cout<<"\n\nout path :"<<outfile<<"\n";
+    std::cout<<"\n\nTexture atlas output path :"<<outfile<<"\n";
+    
+    std::filesystem::remove(outfile);
     
     display(imagefiles);
 
 
-
-
-    png_image image;
+    png_image exportimage;
     /* Only the image structure version number needs to be set. */
-    memset(&image, 0, sizeof image);
-    image.version = PNG_IMAGE_VERSION;
-    
-    png_image_begin_read_from_file(&image, imagefiles[1].getfilepath().c_str());
-    
-    image.height = Canvas.height;
-    image.width = Canvas.width;
+    memset(&exportimage, 0, sizeof exportimage);
+    exportimage.version = PNG_IMAGE_VERSION;
+    png_image_begin_read_from_file(&exportimage, imagefiles[1].getfilepath().c_str());
+    exportimage.height = Canvas.height;
+    exportimage.width = Canvas.width;
 
-    // if(png_image_begin_read_from_memory(&image,   text_atlas_buff, Canvas.width*Canvas.height*BPP))
+    std::cout<<"\nImage processing inprogress....";
+    if(png_image_write_to_file(&exportimage,outfile , 0/*convert to 8bit*/, text_atlas_buff, 0/*stride*/, NULL/*col map*/) )
     {
-        std::cout<<"\nImage processing inprogress....";
-        if ( png_image_write_to_file(&image,outfile ,
-                  0/*convert_to_8bit*/, text_atlas_buff, 0/*row_stride*/,
-                  NULL/*colormap*/) )
-         {
-            std::cout<<"\nOutput image saved :";
-            std::cout<<" width ="<<image.width<<"  height ="<<image.height<<std::endl;
-
-         }
-         else
-         { 
-             std::cout<<"ERROR : png write\n";
-         }
+        std::cout<<"\nOutput texture atlas saved at : "<<outfile;
+        std::cout<<"\nWidth ="<<exportimage.width<<"  Height ="<<exportimage.height;
+    }
+    else
+    { 
+        std::cout<<"ERROR : png write\n";
     }
     free(text_atlas_buff);
+    png_image_free(&exportimage);
 
-
-    /********************Metadata*************************/
+    /********************Metadata Export*************************/
     string metadatafilename = "texture_atlas_metadata.txt";
 
-   //ofstream metafile (fpath+ metadatafilename);
-   ofstream metafile (metadatafilename);
-
+   ofstream metafile (fpath+"/"+metadatafilename);
+   //ofstream metafile (metadatafilename);
    if (!metafile.is_open())
    {
        std::cout <<"ERROR : Unable to open file";
@@ -470,7 +461,7 @@ int main(int argc, char* argv[])
    metafile << "Texture atlas name : "<<TEX_ATLAS_NAME<<"\n";
    metafile << "Width              : "<<Canvas.width<<"\n";
    metafile << "Height             : "<<Canvas.height<<"\n";   
-   metafile << "Number of Pixels   : "<<Canvas.width*Canvas.height<<"\n";
+   metafile << "Size               : "<<Canvas.width*Canvas.height<<" Pixels\n";
    metafile << "Number of Textures : "<<imagefiles.size()<<"\n";
    metafile<<"\n\n";
 
@@ -481,17 +472,17 @@ int main(int argc, char* argv[])
       metafile << "    Name   : "<<imagefiles[i].getfilename()<<"\n";
       metafile << "    width  : "<<imagefiles[i].getwidth()<<"\n";
       metafile << "    height : "<<imagefiles[i].getheight()<<"\n"; 
+      metafile << "    size   : "<<imagefiles[i].getwidth()*imagefiles[i].getheight()<<"\n"; 
       metafile << "    xpos   : "<<imagefiles[i].getxpos()<<"\n";
       metafile << "    ypos   : "<<imagefiles[i].getypos()<<"\n";
-      metafile<<"},\n"; 
+      metafile<<"}\n"; 
    }
 
-      metafile<<"\b\b";
       metafile<<"\n"; 
 
       metafile.close();
       std::cout<<"\nMetadata exported";
-      std::cout<<"\nPROGRAM ENDS";
+      std::cout<<"\n\n---PROGRAM ENDS---\n\n";
 
       wait_for_keypress();
     return 0;
