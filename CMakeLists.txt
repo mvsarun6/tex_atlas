@@ -15,19 +15,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 
-##create library libpng (libpng-1.6.37 and zlib1211)
+#include libpng (libpng-1.6.37 and zlib1211)
 include_directories(${CMAKE_SOURCE_DIR}/libpng/inc)
 include_directories(${CMAKE_SOURCE_DIR}/libpng/src)
 include_directories(${CMAKE_SOURCE_DIR}/libpng/src/zlib)
 
-
-#executable
-add_executable(${PROJECTNAME} 
-                             ${CMAKE_SOURCE_DIR}/src/main.cpp
-                             )
-
-
-add_library(png 
+set(LIB_PNG_SOURCE
+				${LIB_PNG_SOURCE}
                              ${CMAKE_SOURCE_DIR}/libpng/src/png.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngerror.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngget.c
@@ -38,7 +32,6 @@ add_library(png
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngrtran.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngrutil.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngset.c
-                             ${CMAKE_SOURCE_DIR}/libpng/src/pngtest.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngtrans.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngwio.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngwrite.c
@@ -60,8 +53,9 @@ add_library(png
                              ${CMAKE_SOURCE_DIR}/libpng/src/zlib/uncompr.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/zlib/zutil.c
                              )
-                             
-#link library
-target_link_libraries(${PROJECTNAME}  ${CMAKE_SOURCE_DIR}/build/libpng.a)
 
-
+#executable
+add_executable(${PROJECTNAME} 
+                             ${CMAKE_SOURCE_DIR}/src/main.cpp
+                             ${LIB_PNG_SOURCE}
+                             )
