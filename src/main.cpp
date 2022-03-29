@@ -438,7 +438,7 @@ int main(int argc, char* argv[])
 
 
         //PART 2
-        /* Place PNG's in already found free space in already resrved row */
+   /* Place PNG's in already found free space in already resrved row */
      //std::cout<<"\n Top free sp size = "<<CanvasFreespace.size();
      for(int i=0;i<CanvasFreespace.size();i++)
      {
@@ -450,11 +450,19 @@ int main(int argc, char* argv[])
         }
         else
         {
-           if(locx<=CanvasFreespace[i].xpos || locy <=CanvasFreespace[i].ypos)
+           if(get_MaxUndockHeight(imagefiles)< (CanvasFreespace[i-1].ypos - CanvasFreespace[i].ypos))
+           {
+              locx = CanvasFreespace[i].xpos;
+              locy = CanvasFreespace[i].ypos;
+           }
+           else if (locx<=CanvasFreespace[i].xpos || locy <=CanvasFreespace[i].ypos)
            {
                locx = CanvasFreespace[i].xpos;
                locy = CanvasFreespace[i].ypos;
-
+           }
+           else //if (locx>CanvasFreespace[i].xpos && locy > CanvasFreespace[i].ypos)
+           {
+               locy = CanvasFreespace[i].ypos;
            }
         }
 
@@ -496,8 +504,7 @@ int main(int argc, char* argv[])
              }
         }//WHILE  
      }
-    
-    
+        
     }//mainforloop
   
     //display(imagefiles);
