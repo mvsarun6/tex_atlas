@@ -73,6 +73,7 @@ class Imageinfo
       void setwidth(uint_32 w)      {         width = w;       }
       void setheight(uint_32 h)     {         height = h;      }
       void setdocked()              {         docked = 1;      }
+      void cleardocked()            {         docked = 0;      }
       void setxpos(uint_32 x)       {         xpos = x;        }
       void setypos(uint_32 y)       {         ypos = y;        }
 
@@ -140,6 +141,19 @@ int get_MaxUndockHeight(std::vector<Imageinfo> &obj)
     return maxh;
 }
 
+
+//reset docking info, xpos, ypos
+void reset_dockingdata(std::vector<Imageinfo> &obj)
+{
+   int maxh =0;
+    for (auto &filen : obj)
+    {
+        filen.setxpos(0);
+        filen.setypos(0);
+        filen.cleardocked();
+    }
+}
+
 //Get maximum width PNG
 int get_MaxWidth(std::vector<Imageinfo> &obj)
 {
@@ -195,12 +209,11 @@ typedef struct FreeSpace
 
 typedef struct ImgCanvas
 {
-  size_t length;
   uint_32 width;
   uint_32 height;
 
   ImgCanvas():
-  length{0},width{0},height{0}
+  width{0},height{0}
   {
   }
 
@@ -208,12 +221,14 @@ typedef struct ImgCanvas
   {
   }
 
+  uint_32 get_length ()
+  {
+     return width*height;
+  }
+
 }ImgCanvas;
 
 /********************************************************/
-
-
-
 
 
 int store_image(std::vector<Imageinfo> &images, unsigned long buffaddr, int buffwidth,int buffheight)
@@ -289,6 +304,194 @@ void wait_for_keypress()
     std::cin>>x;
 }
 
+
+//Create image data vector
+std::vector<Imageinfo> imagefiles;
+
+//Create Output image canvas
+ImgCanvas Canvas;
+
+
+#define MAX_TRY 10 //(- X to +X times)
+/*
+plot_docking():
+Plot docking points(in imagefiles) for each input PNG's and find corresponding output canvas area based on input idx
+*/
+void plot_docking(int try_idx)
+{
+   
+   //set image canvas width, Its fixed. Height can be varied
+   uint_32 locCanW=0;
+   uint_32 locCanH=0;
+   int num_of_image_w =(ceil(sqrt(imagefiles.size()))-try_idx);
+   if( num_of_image_w <=0)
+   {
+       return;
+   }
+
+   for(int i=0;i<num_of_image_w;i++)
+   {
+      locCanW+=imagefiles[i].getwidth();  //do not modify locCanW here after     
+   }
+   
+   //make sure canvas width is within the png which has largest width
+  if(locCanW<get_MaxWidth(imagefiles))
+  {
+     locCanW=get_MaxWidth(imagefiles);
+  }
+
+    //MAIN LOOP
+   /* Dock all PNG files in appropriate position and update its xpos and ypos in image data vector
+      No memory will be created at this moment for final atlas creation
+      image canvas height will be increased if needed (note: width is fixed) */
+   for(int i=0;i<imagefiles.size();i++) //Main For Loop 
+   {
+        int locx=0;
+        int locy=Canvas.height;  
+        std::vector<FreeSpace> CanvasFreespace; 
+        
+       //Get maximum height among the undocked images and add that to the canvas height
+        locCanH = get_MaxUndockHeight(imagefiles);
+        //Canvas.length += locCanW*locCanH*BPP;
+        Canvas.width = locCanW; //do not modify
+        Canvas.height += locCanH;
+
+
+        //PART 1
+        /* Reserve a row with MaxUndockHeight and place PNG's in order until it reached fixed width
+           And also find largest free space in the canvas */
+        while(locx<Canvas.width)
+        {
+            int updated=0;
+            int widthavail = Canvas.width - locx;
+            for(auto &img : imagefiles )
+            {
+            if(!img.isdocked())
+            {
+                if(img.getwidth()<=widthavail && locCanH>=img.getheight())
+                {
+                    img.setxpos(locx);
+                    img.setypos(locy);
+                    img.setdocked();
+                    //std::cout<<"\n dockingimage ="<<img.getfilename();
+                   // if((CanvasFreespace.area()*1)< (locCanH-img.getheight()) * (Canvas.width-locx) )
+                       {
+                           FreeSpace tempFS;
+                           tempFS.xpos =  locx;
+                           tempFS.ypos = img.getheight()+locy;
+                           tempFS.width = Canvas.width-locx;
+                           tempFS.height = Canvas.height - tempFS.ypos;
+
+                           if(CanvasFreespace.size()==0)
+                           {
+                              CanvasFreespace.push_back(tempFS);
+                           }
+                           else if(tempFS.ypos < CanvasFreespace.back().ypos)
+                           {
+                              CanvasFreespace.push_back(tempFS);
+                           }
+                       }
+                       locx+=img.getwidth();
+                       updated=1;
+                       break;
+                   }
+                }
+            }
+    
+            if(updated==0)
+            {
+                break;
+            }
+        }//WHILE
+    
+        //CanvasFreespace.display();
+
+ //  std::sort(CanvasFreespace.begin(),CanvasFreespace.end());
+ //  std::reverse(CanvasFreespace.begin(),CanvasFreespace.end());
+
+
+        //PART 2
+   /* Place PNG's in already found free space in already resrved row */
+     //std::cout<<"\n Top free sp size = "<<CanvasFreespace.size();
+     for(int i=0;i<CanvasFreespace.size();i++)
+     {
+       // std::cout<<"\n below i ="<< i <<" free sp size = "<<CanvasFreespace.size();
+        if(i==0)
+        {
+            locx = CanvasFreespace[i].xpos;
+            locy = CanvasFreespace[i].ypos;
+        }
+        else
+        {
+           if(get_MaxUndockHeight(imagefiles)< (CanvasFreespace[i-1].ypos - CanvasFreespace[i].ypos))
+           {
+              if(locx<CanvasFreespace[i].xpos)
+              {
+               locx = CanvasFreespace[i].xpos;
+              }
+              locy = CanvasFreespace[i].ypos;
+           }
+           else if (locx<=CanvasFreespace[i].xpos || locy <=CanvasFreespace[i].ypos)
+           {
+               locx = CanvasFreespace[i].xpos;
+               locy = CanvasFreespace[i].ypos;
+           }
+           else //if (locx>CanvasFreespace[i].xpos && locy > CanvasFreespace[i].ypos)
+           {
+               locy = CanvasFreespace[i].ypos;
+           }
+        }
+
+        //std::cout<<"\nlocx and locy "<<locx<<" "<<locy<<"   for H "<<locCanH;
+
+        while(locx<Canvas.width)
+        {
+            int updated=0;
+            int widthavail = Canvas.width - locx;
+            for(auto &img : imagefiles )
+            {
+                if(!img.isdocked())
+                {
+                    
+                    if(img.getwidth()<=widthavail && Canvas.height>=(img.getheight()+locy))
+                    {
+                        img.setxpos(locx);
+                        img.setypos(locy);
+                        img.setdocked();
+                        //std::cout<<"\n 2 : dockingimage ="<<img.getfilename();
+                        {
+                           FreeSpace tempFS;
+                           tempFS.xpos =  locx;
+                           tempFS.ypos = img.getheight()+locy;
+                           tempFS.width = Canvas.width-locx;
+                           tempFS.height = Canvas.height - tempFS.ypos;
+                           if(CanvasFreespace.size()==0)
+                           {
+                              CanvasFreespace.push_back(tempFS);
+                           }
+                           else if(tempFS.ypos < CanvasFreespace.back().ypos)
+                           {
+                              CanvasFreespace.push_back(tempFS);
+                           }
+                        }
+                        locx+=img.getwidth();
+                        updated=1;
+                        break;
+                   }
+                }
+            }
+    
+            if(updated==0)
+            {
+                break;
+             }
+        }//WHILE  
+     }
+        
+    }//mainforloop
+}
+
+
 int main(int argc, char* argv[])
 {
     int ret;
@@ -313,8 +516,6 @@ int main(int argc, char* argv[])
         return 0;
    }
 
-   //Create image data vector
-   std::vector<Imageinfo> imagefiles;
     
     //Get all available PNG file details
     for (const auto  &entry : fs::directory_iterator(fpath))
@@ -358,160 +559,41 @@ int main(int argc, char* argv[])
 
    //display(imagefiles);
    
-   //Create output image canvas
-   ImgCanvas Canvas;
+   /* Create output image canvas   */
 
-   //set image canvas width, Its fixed. Height can be varied
-   uint_32 locCanW=0;
-   uint_32 locCanH=0;
-   for(int i=0;i<ceil(sqrt(imagefiles.size()));i++)
+   //Find the minimum canvas area by looping different idx, from -MAX_TRY to +MAX_TRY times
+   int min_canvas_area_index = 0;
+   int min_length = 0;
+   for(int idx_try_find_min_area = -MAX_TRY; idx_try_find_min_area <= MAX_TRY; idx_try_find_min_area++)
    {
-      locCanW+=imagefiles[i].getwidth();  //do not modify locCanW here after     
-   }
-   
-   //make sure canvas width is within the png which has largest width
-  if(locCanW<get_MaxWidth(imagefiles))
-  {
-     locCanW=get_MaxWidth(imagefiles);
+       Canvas.height = 0;
+       Canvas.width = 0;
+       reset_dockingdata(imagefiles);
+       
+       //Get docking canvas area with new index
+       plot_docking(idx_try_find_min_area);
+       
+       if((Canvas.get_length()!=0) && (min_length==0 || min_length > Canvas.get_length()) )
+       {
+         min_length = Canvas.get_length();
+         min_canvas_area_index = idx_try_find_min_area;
+       }  
+
+     //  std::cout<<"\n min_canvas_area_index = "<<min_canvas_area_index<<" "<<Canvas.height<<" "<<Canvas.width;
   }
-
-    //MAIN LOOP
-   /* Dock all PNG files in appropriate position and update its xpos and ypos in image data vector
-      No memory will be created at this moment for final atlas creation
-      image canvas height will be increased if needed (note: width is fixed) */
-   for(int i=0;i<imagefiles.size();i++) //Main For Loop 
-   {
-        int locx=0;
-        int locy=Canvas.height;  
-        std::vector<FreeSpace> CanvasFreespace; 
-        
-       //Get maximum height among the undocked images and add that to the canvas height
-        locCanH = get_MaxUndockHeight(imagefiles);
-        Canvas.length += locCanW*locCanH*BPP;
-        Canvas.width = locCanW; //do not modify
-        Canvas.height += locCanH;
+ 
+  //Set canvas size and imagefiles docking points with already found min_canvas_area_index
+  Canvas.height = 0;
+  Canvas.width = 0;
+  reset_dockingdata(imagefiles);
+  plot_docking(min_canvas_area_index);
 
 
-        //PART 1
-        /* Reserve a row with MaxUndockHeight and place PNG's in order until it reached fixed width
-           And also find largest free space in the canvas */
-        while(locx<Canvas.width)
-        {
-            int updated=0;
-            int widthavail = Canvas.width - locx;
-            for(auto &img : imagefiles )
-            {
-            if(!img.isdocked())
-            {
-                if(img.getwidth()<=widthavail && locCanH>=img.getheight())
-                {
-                    img.setxpos(locx);
-                    img.setypos(locy);
-                    img.setdocked();
-                    //std::cout<<"\n dockingimage ="<<img.getfilename();
-                   // if((CanvasFreespace.area()*1)< (locCanH-img.getheight()) * (Canvas.width-locx) )
-                       {
-                           FreeSpace tempFS;
-                           tempFS.xpos =  locx;
-                           tempFS.ypos = img.getheight()+locy;
-                           tempFS.width = Canvas.width-locx;
-                           tempFS.height = Canvas.height - tempFS.ypos;
-                           CanvasFreespace.push_back(tempFS);
-                       }
-                       locx+=img.getwidth();
-                       updated=1;
-                       break;
-                   }
-                }
-            }
-    
-            if(updated==0)
-            {
-                break;
-            }
-        }//WHILE
-    
-        //CanvasFreespace.display();
-
- //  std::sort(CanvasFreespace.begin(),CanvasFreespace.end());
- //  std::reverse(CanvasFreespace.begin(),CanvasFreespace.end());
-
-
-        //PART 2
-   /* Place PNG's in already found free space in already resrved row */
-     //std::cout<<"\n Top free sp size = "<<CanvasFreespace.size();
-     for(int i=0;i<CanvasFreespace.size();i++)
-     {
-       // std::cout<<"\n below i ="<< i <<" free sp size = "<<CanvasFreespace.size();
-        if(i==0)
-        {
-            locx = CanvasFreespace[i].xpos;
-            locy = CanvasFreespace[i].ypos;
-        }
-        else
-        {
-           if(get_MaxUndockHeight(imagefiles)< (CanvasFreespace[i-1].ypos - CanvasFreespace[i].ypos))
-           {
-              locx = CanvasFreespace[i].xpos;
-              locy = CanvasFreespace[i].ypos;
-           }
-           else if (locx<=CanvasFreespace[i].xpos || locy <=CanvasFreespace[i].ypos)
-           {
-               locx = CanvasFreespace[i].xpos;
-               locy = CanvasFreespace[i].ypos;
-           }
-           else //if (locx>CanvasFreespace[i].xpos && locy > CanvasFreespace[i].ypos)
-           {
-               locy = CanvasFreespace[i].ypos;
-           }
-        }
-
-        //std::cout<<"\nlocx and locy "<<locx<<" "<<locy<<"   for H "<<locCanH;
-
-        while(locx<Canvas.width)
-        {
-            int updated=0;
-            int widthavail = Canvas.width - locx;
-            for(auto &img : imagefiles )
-            {
-                if(!img.isdocked())
-                {
-                    
-                    if(img.getwidth()<=widthavail && Canvas.height>=(img.getheight()+locy))
-                    {
-                        img.setxpos(locx);
-                        img.setypos(locy);
-                        img.setdocked();
-                        //std::cout<<"\n 2 : dockingimage ="<<img.getfilename();
-                        {
-                           FreeSpace tempFS;
-                           tempFS.xpos =  locx;
-                           tempFS.ypos = img.getheight()+locy;
-                           tempFS.width = Canvas.width-locx;
-                           tempFS.height = Canvas.height - tempFS.ypos;
-                           CanvasFreespace.push_back(tempFS);
-                        }
-                        locx+=img.getwidth();
-                        updated=1;
-                        break;
-                   }
-                }
-            }
-    
-            if(updated==0)
-            {
-                break;
-             }
-        }//WHILE  
-     }
-        
-    }//mainforloop
-  
     //display(imagefiles);
     
     //Allocate memory for the image canvas with earlier fixed width and final calculated height
     void *text_atlas_buff = malloc(Canvas.width*Canvas.height*BPP);
-       std::cout<<"\nAllocate "<<Canvas.width*Canvas.height*BPP<<" bytes";
+    //std::cout<<"\nAllocate "<<Canvas.width*Canvas.height*BPP<<" bytes";
     if(text_atlas_buff==NULL)
     {
        std::cout<<"ERROR : memory allocation failed\n";
@@ -614,6 +696,9 @@ int main(int argc, char* argv[])
       std::cout<<"\n\nMetadata exported at : "<<metadatafilename;
 
    std::cout<<"\n\n---PROGRAM ENDS---\n\n";
+
+   
+   imagefiles.clear();
 
    wait_for_keypress();
 

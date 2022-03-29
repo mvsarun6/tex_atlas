@@ -5,7 +5,7 @@ Both texture_atlas and texture_atlas_metadata will be stored in folder "out" ins
 
 The project is tested in both linux and windows.
 
-Known issue : Texture packing still needs to be improved, thus texture atlas can be reduced
+Known issue : Image rotation can be implemented to further reduce output texture atlas PNG size
 
 
 list of third-party dependencies
