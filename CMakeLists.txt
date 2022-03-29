@@ -19,6 +19,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 include_directories(${CMAKE_SOURCE_DIR}/libpng/inc)
 include_directories(${CMAKE_SOURCE_DIR}/libpng/src)
 include_directories(${CMAKE_SOURCE_DIR}/libpng/src/zlib)
+
+
+#executable
+add_executable(${PROJECTNAME} 
+                             ${CMAKE_SOURCE_DIR}/src/main.cpp
+                             )
+
+
 add_library(png 
                              ${CMAKE_SOURCE_DIR}/libpng/src/png.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/pngerror.c
@@ -52,12 +60,7 @@ add_library(png
                              ${CMAKE_SOURCE_DIR}/libpng/src/zlib/uncompr.c
                              ${CMAKE_SOURCE_DIR}/libpng/src/zlib/zutil.c
                              )
-
-#executable
-add_executable(${PROJECTNAME} 
-                             ${CMAKE_SOURCE_DIR}/src/main.cpp
-                             )
-
+                             
 #link library
 target_link_libraries(${PROJECTNAME}  ${CMAKE_SOURCE_DIR}/build/libpng.a)
 
