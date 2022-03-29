@@ -379,7 +379,7 @@ int main(int argc, char* argv[])
                     if((CanvasFreespace.area()*1.5)< (locCanH-img.getheight()) * (Canvas.width-locx) )
                        {
                            CanvasFreespace.xpos =  locx;
-                           CanvasFreespace.ypos = img.getheight();
+                           CanvasFreespace.ypos = img.getheight()+locy;
                            CanvasFreespace.width = Canvas.width-locx;
                            CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
                        }
