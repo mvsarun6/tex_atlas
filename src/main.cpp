@@ -16,13 +16,13 @@
 #include <fstream> //for fstream
 #include <vector>
 #include <sstream> //for stringstream
-#include <algorithm> //for find, count_if
+#include <algorithm>
 
 #include <filesystem>
 
 
 
-//libpng
+//libpng and other c includes
 extern "C"
 {
   #include "png.h"
@@ -40,18 +40,20 @@ typedef unsigned char uint_8;
 
 #define METADATA_FILE "texture_atlas_metadata.txt"
 #define TEX_ATLAS_NAME "texture_atlas.png"
-#define BPP 4
+#define BPP 4 //bytes per pixel
 
 /*******************Class Imageinfo *************************************/
+
+//Imageinfo class, holds all details about an input png file
 class Imageinfo
 {
    private:
-      string filepath;
+      string filepath; //filepath of the input PNG
       uint_32 width;
       uint_32 height;
-      bool docked;
-      uint_32 xpos;
-      uint_32 ypos;
+      bool docked; //0- not being placed into output atlas
+      uint_32 xpos; //Valid only if docked=1, xpos in output atlas
+      uint_32 ypos; //Valid only if docked=1, ypos in output atlas
  
    public:
       
@@ -81,7 +83,7 @@ class Imageinfo
       uint_32 getxpos()          {         return xpos;        }
       uint_32 getypos()          {         return ypos;        }
 
-      
+      //Extract png file name from file path
       string getfilename()       {   
          string tempstr =   filepath;  
          
@@ -99,18 +101,20 @@ class Imageinfo
          return tempstr;    
          }
       
-
+      //Overload < for height comparison
       bool operator<(Imageinfo &obj2)
       {
          return (height<obj2.height);
       }
+
+      //Overload < for height comparison
       bool operator==(Imageinfo &obj2)
       {
          return (height==obj2.height);
       }
 };
 
-
+//Display all PNG details of Imageinfo vector
 void display(std::vector<Imageinfo> &obj)
 {
     std::cout <<"\n-----display texture names:\n";
@@ -122,6 +126,7 @@ void display(std::vector<Imageinfo> &obj)
     //std::cout <<"-----display end-----\n";
 }
 
+//Get maximum height among the undocked images
 int get_MaxUndockHeight(std::vector<Imageinfo> &obj)
 {
    int maxh =0;
@@ -218,6 +223,7 @@ int store_image(std::vector<Imageinfo> &images, unsigned long buffaddr, int buff
                 if (png_image_finish_read(&image, NULL/*background*/, buffer,
                    0/*row_stride*/, NULL/*colormap for PNG_FORMAT_FLAG_COLORMAP */))
                 {
+
                    for(int i=0;i<img.getheight();i++)
                    {
                       //std::cout<<".";
@@ -280,9 +286,10 @@ int main(int argc, char* argv[])
         return 0;
    }
 
+   //Create image data vector
    std::vector<Imageinfo> imagefiles;
-
-
+    
+    //Get all available PNG file details
     for (const auto  &entry : fs::directory_iterator(fpath))
     {
         string tempfile = entry.path().string();        
@@ -306,6 +313,7 @@ int main(int argc, char* argv[])
         }
     }
 
+    //Check if there is PNG files available
     if(imagefiles.size()==0)
     {
        std::cout<<"ERROR : no png files found in the given folder\n";
@@ -314,12 +322,19 @@ int main(int argc, char* argv[])
     }
 
    //display(imagefiles);
+
+   //Sort PNG file based on its height
    std::sort(imagefiles.begin(),imagefiles.end());
+
+   //Sort PNG files in ascending order (based on height) //overloaded < and == based on height
    std::reverse(imagefiles.begin(),imagefiles.end());
+
    //display(imagefiles);
-    
+   
+   //Create output image canvas
    ImgCanvas Canvas;
 
+   //set image canvas width, Its fixed. Height can be varied
    int NoProcImg =0;
    uint_32 locCanW=0;
    uint_32 locCanH=0;
@@ -328,19 +343,26 @@ int main(int argc, char* argv[])
       locCanW+=imagefiles[i].getwidth();  //do not modify locCanW here after     
    }
 
-   for(int i=0;i<imagefiles.size();i++) //Main For Loop
+    //MAIN LOOP
+   /* Dock all PNG files in appropriate position and update its xpos and ypos in image data vector
+      No memory will be created at this moment for final atlas creation
+      image canvas height will be increased if needed (note: width is fixed) */
+   for(int i=0;i<imagefiles.size();i++) //Main For Loop 
    {
         int locx=0;
         int locy=Canvas.height;  
         FreeSpace CanvasFreespace; 
         
+       //Get maximum height among the undocked images and add that to the canvas height
         locCanH = get_MaxUndockHeight(imagefiles);
         Canvas.length += locCanW*locCanH*BPP;
         Canvas.width = locCanW; //do not modify
         Canvas.height += locCanH;
-        //std::cout<<"\ncanvas size ="<<Canvas.length<<" canvas width ="<<Canvas.width<<" canvas height ="<<Canvas.height;
-        
+
+
         //PART 1
+        /* Reserve a row with MaxUndockHeight and place PNG's in order until it reached fixed width
+           And also find largest free space in the canvas */
         while(locx<Canvas.width)
         {
             int updated=0;
@@ -373,11 +395,12 @@ int main(int argc, char* argv[])
             {
                 break;
             }
-        }//WHILE    
+        }//WHILE
     
         //CanvasFreespace.display();
     
-        //PART 2            
+        //PART 2
+        /* Place PNG's in already found free space in already resrved row */
         locx=CanvasFreespace.xpos;
         locy=CanvasFreespace.ypos;   
         while(locx<Canvas.width)
@@ -420,7 +443,7 @@ int main(int argc, char* argv[])
   
     //display(imagefiles);
     
-    
+    //Allocate memory for the image canvas with earlier fixed width and final calculated height
     void *text_atlas_buff = malloc(Canvas.width*Canvas.height*BPP);
        std::cout<<"\nAllocate "<<Canvas.width*Canvas.height*BPP<<" bytes";
     if(text_atlas_buff==NULL)
@@ -429,8 +452,11 @@ int main(int argc, char* argv[])
        wait_for_keypress();
        return 0;
     }
+
+    //Set all pixels of output image canvas with white color
     memset(text_atlas_buff,0xFF, Canvas.width*Canvas.height*BPP);
     
+    //Place all the input PNG's into the image canvas buffer according to its x,y docking position which were calculated earlier
     if(!store_image(imagefiles, (unsigned long) text_atlas_buff,Canvas.width,Canvas.height))
     {
          std::cout<<"ERROR : store image\n";
@@ -440,8 +466,7 @@ int main(int argc, char* argv[])
     }
 
    
-   
-
+    //deduce output directory for output atlas png
     string outfile(argv[1]);
     fs::current_path(outfile);  
     fs::create_directories("out");
@@ -449,13 +474,14 @@ int main(int argc, char* argv[])
     outfile.append("/out/");
     outfile.append(TEX_ATLAS_NAME);
     std::cout<<"\n\nTexture atlas output path :"<<outfile<<"\n";
-
+    
+    //remove the atlas png, if it was already present in the directory
     fs::remove(outfile);
     
     display(imagefiles);
-
+   
+   //Convert the output buffer data into PNG file format and store it into output directory
     png_image exportimage;
-    /* Only the image structure version number needs to be set. */
     memset(&exportimage, 0, sizeof exportimage);
     exportimage.version = PNG_IMAGE_VERSION;
     png_image_begin_read_from_file(&exportimage, imagefiles[1].getfilepath().c_str());
@@ -477,12 +503,15 @@ int main(int argc, char* argv[])
 
     /********************Metadata Export*************************/
 
+    //deduce output path for metadata
     string metadatafilename(fpath);
     metadatafilename.append("/out/");
     metadatafilename.append(METADATA_FILE);
+
+    //remove the metadata, if it was already present in the directory
     fs::remove(metadatafilename);
 
-   //std::cout<<"\n"<<metadatafilename;
+    //create/open the metadata file
    ofstream metafile (metadatafilename);
    if (!metafile.is_open())
    {
@@ -492,6 +521,7 @@ int main(int argc, char* argv[])
 
    }
 
+    //store the metadata from image data vector
    metafile << "Texture atlas name : "<<TEX_ATLAS_NAME<<"\n";
    metafile << "Width              : "<<Canvas.width<<"\n";
    metafile << "Height             : "<<Canvas.height<<"\n";   
@@ -516,9 +546,11 @@ int main(int argc, char* argv[])
 
       metafile.close();
       std::cout<<"\n\nMetadata exported at : "<<metadatafilename;
-      std::cout<<"\n\n---PROGRAM ENDS---\n\n";
 
-      wait_for_keypress();
+   std::cout<<"\n\n---PROGRAM ENDS---\n\n";
+
+   wait_for_keypress();
 
     return 0;
 }
+
