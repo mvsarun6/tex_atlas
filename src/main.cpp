@@ -140,6 +140,19 @@ int get_MaxUndockHeight(std::vector<Imageinfo> &obj)
     return maxh;
 }
 
+//Get maximum width PNG
+int get_MaxWidth(std::vector<Imageinfo> &obj)
+{
+   int maxw =0;
+    for (auto &filen : obj)
+    {
+        if(maxw<filen.getwidth())
+        {
+           maxw = filen.getwidth();
+        }
+    }
+    return maxw;
+}
 /********************************************************/
 typedef struct FreeSpace
 {
@@ -157,6 +170,20 @@ typedef struct FreeSpace
       {
          return width*height;
         }
+
+        
+      //Overload < for area comparison
+      bool operator<(FreeSpace &obj2)
+      {
+         return ((width*height)<(obj2.width*obj2.height));
+      }
+
+      //Overload < for area comparison
+      bool operator==(FreeSpace &obj2)
+      {
+         return ((width*height)==(obj2.width*obj2.height));
+      }
+
 
       void display()
       {
@@ -335,13 +362,18 @@ int main(int argc, char* argv[])
    ImgCanvas Canvas;
 
    //set image canvas width, Its fixed. Height can be varied
-   int NoProcImg =0;
    uint_32 locCanW=0;
    uint_32 locCanH=0;
    for(int i=0;i<ceil(sqrt(imagefiles.size()));i++)
    {
       locCanW+=imagefiles[i].getwidth();  //do not modify locCanW here after     
    }
+   
+   //make sure canvas width is within the png which has largest width
+  if(locCanW<get_MaxWidth(imagefiles))
+  {
+     locCanW=get_MaxWidth(imagefiles);
+  }
 
     //MAIN LOOP
    /* Dock all PNG files in appropriate position and update its xpos and ypos in image data vector
@@ -351,7 +383,7 @@ int main(int argc, char* argv[])
    {
         int locx=0;
         int locy=Canvas.height;  
-        FreeSpace CanvasFreespace; 
+        std::vector<FreeSpace> CanvasFreespace; 
         
        //Get maximum height among the undocked images and add that to the canvas height
         locCanH = get_MaxUndockHeight(imagefiles);
@@ -376,15 +408,17 @@ int main(int argc, char* argv[])
                     img.setxpos(locx);
                     img.setypos(locy);
                     img.setdocked();
-                    if((CanvasFreespace.area()*1.5)< (locCanH-img.getheight()) * (Canvas.width-locx) )
+                    //std::cout<<"\n dockingimage ="<<img.getfilename();
+                   // if((CanvasFreespace.area()*1)< (locCanH-img.getheight()) * (Canvas.width-locx) )
                        {
-                           CanvasFreespace.xpos =  locx;
-                           CanvasFreespace.ypos = img.getheight()+locy;
-                           CanvasFreespace.width = Canvas.width-locx;
-                           CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+                           FreeSpace tempFS;
+                           tempFS.xpos =  locx;
+                           tempFS.ypos = img.getheight()+locy;
+                           tempFS.width = Canvas.width-locx;
+                           tempFS.height = Canvas.height - tempFS.ypos;
+                           CanvasFreespace.push_back(tempFS);
                        }
                        locx+=img.getwidth();
-                       NoProcImg++;
                        updated=1;
                        break;
                    }
@@ -398,11 +432,34 @@ int main(int argc, char* argv[])
         }//WHILE
     
         //CanvasFreespace.display();
-    
+
+ //  std::sort(CanvasFreespace.begin(),CanvasFreespace.end());
+ //  std::reverse(CanvasFreespace.begin(),CanvasFreespace.end());
+
+
         //PART 2
         /* Place PNG's in already found free space in already resrved row */
-        locx=CanvasFreespace.xpos;
-        locy=CanvasFreespace.ypos;   
+     //std::cout<<"\n Top free sp size = "<<CanvasFreespace.size();
+     for(int i=0;i<CanvasFreespace.size();i++)
+     {
+       // std::cout<<"\n below i ="<< i <<" free sp size = "<<CanvasFreespace.size();
+        if(i==0)
+        {
+            locx = CanvasFreespace[i].xpos;
+            locy = CanvasFreespace[i].ypos;
+        }
+        else
+        {
+           if(locx<=CanvasFreespace[i].xpos || locy <=CanvasFreespace[i].ypos)
+           {
+               locx = CanvasFreespace[i].xpos;
+               locy = CanvasFreespace[i].ypos;
+
+           }
+        }
+
+        //std::cout<<"\nlocx and locy "<<locx<<" "<<locy<<"   for H "<<locCanH;
+
         while(locx<Canvas.width)
         {
             int updated=0;
@@ -412,20 +469,21 @@ int main(int argc, char* argv[])
                 if(!img.isdocked())
                 {
                     
-                    if(img.getwidth()<=widthavail && locCanH>=(img.getheight()+locy))
+                    if(img.getwidth()<=widthavail && Canvas.height>=(img.getheight()+locy))
                     {
                         img.setxpos(locx);
                         img.setypos(locy);
                         img.setdocked();
-                        if((CanvasFreespace.area()*1.5)< (locCanH-img.getheight()) * (Canvas.width-locx) )
+                        //std::cout<<"\n 2 : dockingimage ="<<img.getfilename();
                         {
-                            CanvasFreespace.xpos =  locx;
-                            CanvasFreespace.ypos = img.getheight();
-                            CanvasFreespace.width = Canvas.width-locx;
-                            CanvasFreespace.height = Canvas.height - CanvasFreespace.ypos;
+                           FreeSpace tempFS;
+                           tempFS.xpos =  locx;
+                           tempFS.ypos = img.getheight()+locy;
+                           tempFS.width = Canvas.width-locx;
+                           tempFS.height = Canvas.height - tempFS.ypos;
+                           CanvasFreespace.push_back(tempFS);
                         }
                         locx+=img.getwidth();
-                        NoProcImg++;
                         updated=1;
                         break;
                    }
@@ -437,6 +495,7 @@ int main(int argc, char* argv[])
                 break;
              }
         }//WHILE  
+     }
     
     
     }//mainforloop
