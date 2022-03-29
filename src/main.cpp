@@ -252,7 +252,7 @@ int store_image(std::vector<Imageinfo> &images, unsigned long buffaddr, int buff
 void wait_for_keypress()
 {
     int x;
-    std::cout<<"\n\n\nPress any key and enter to exit........";
+    std::cout<<"\n\n\nTo exit program : Press any key and enter........";
     std::cin>>x;
 }
 
@@ -306,6 +306,13 @@ int main(int argc, char* argv[])
         }
     }
 
+    if(imagefiles.size()==0)
+    {
+       std::cout<<"ERROR : no png files found in the given folder\n";
+       wait_for_keypress();
+       return 0;
+    }
+
    //display(imagefiles);
    std::sort(imagefiles.begin(),imagefiles.end());
    std::reverse(imagefiles.begin(),imagefiles.end());
@@ -316,7 +323,7 @@ int main(int argc, char* argv[])
    int NoProcImg =0;
    uint_32 locCanW=0;
    uint_32 locCanH=0;
-   for(int i=0;i<sqrt(imagefiles.size());i++)
+   for(int i=0;i<ceil(sqrt(imagefiles.size()));i++)
    {
       locCanW+=imagefiles[i].getwidth();  //do not modify locCanW here after     
    }
