@@ -184,7 +184,7 @@ typedef struct ImgCanvas
 
 
 
-int store_image(std::vector<Imageinfo> &images, uint_32 buffaddr, int buffwidth,int buffheight)
+int store_image(std::vector<Imageinfo> &images, unsigned long buffaddr, int buffwidth,int buffheight)
 {
     int ret =0;
 
@@ -259,6 +259,7 @@ void wait_for_keypress()
 int main(int argc, char* argv[])
 {
     int ret;
+    namespace fs = std::filesystem;
 
    /* Check if there is any argument provided
       If no argument provided, return program with error message
@@ -272,10 +273,17 @@ int main(int argc, char* argv[])
    /* Extract file name to a c++ string */
    string fpath (argv[1]);
 
+   if(!fs::is_directory(fpath))
+   {
+        std::cout<<"\nError : The given path is not valid....";
+        wait_for_keypress();
+        return 0;
+   }
+
    std::vector<Imageinfo> imagefiles;
 
 
-    for (const auto  &entry : std::filesystem::directory_iterator(fpath))
+    for (const auto  &entry : fs::directory_iterator(fpath))
     {
         string tempfile = entry.path().string();        
         if( tempfile.compare( (tempfile.end()-4)-tempfile.begin(),4,".png") ==0  || tempfile.compare((tempfile.end()-4)-tempfile.begin(),4,".PNG")==0)
@@ -416,7 +424,7 @@ int main(int argc, char* argv[])
     }
     memset(text_atlas_buff,0xFF, Canvas.width*Canvas.height*BPP);
     
-    if(!store_image(imagefiles, (uint_32) text_atlas_buff,Canvas.width,Canvas.height))
+    if(!store_image(imagefiles, (unsigned long) text_atlas_buff,Canvas.width,Canvas.height))
     {
          std::cout<<"ERROR : store image\n";
          wait_for_keypress();
@@ -424,13 +432,18 @@ int main(int argc, char* argv[])
          return 0;
     }
 
+   
+   
 
     string outfile(argv[1]);
-    outfile.append("\\");
+    fs::current_path(outfile);  
+    fs::create_directories("out");
+
+    outfile.append("/out/");
     outfile.append(TEX_ATLAS_NAME);
     std::cout<<"\n\nTexture atlas output path :"<<outfile<<"\n";
-    
-    std::filesystem::remove(outfile);
+
+    fs::remove(outfile);
     
     display(imagefiles);
 
@@ -458,8 +471,9 @@ int main(int argc, char* argv[])
     /********************Metadata Export*************************/
 
     string metadatafilename(fpath);
-    metadatafilename.append("\\");
+    metadatafilename.append("/out/");
     metadatafilename.append(METADATA_FILE);
+    fs::remove(metadatafilename);
 
    //std::cout<<"\n"<<metadatafilename;
    ofstream metafile (metadatafilename);

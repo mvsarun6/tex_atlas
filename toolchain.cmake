@@ -1,7 +1,11 @@
 #
 # Set the GCC installation path
 #
+
+#windows
 SET(GCCTOOLPATH "d:/Software_Install/MinGW")
+#Linux
+#SET(GCCTOOLPATH "/usr")
 
 if (NOT GCCTOOLPATH)
   message(FATAL_ERROR "Please set the toolchain path in *.cmake" )
@@ -12,8 +16,12 @@ SET(CMAKE_SYSTEM_PROCESSOR "AMD64")
 set (X86 TRUE)
 
 # Set the C and C++ compiler
+#Windows
 SET(CMAKE_C_COMPILER   ${GCCTOOLPATH}/bin/gcc.exe)
 SET(CMAKE_CXX_COMPILER ${GCCTOOLPATH}/bin/g++.exe)
+#Linux
+#SET(CMAKE_C_COMPILER   ${GCCTOOLPATH}/bin/gcc)
+#SET(CMAKE_CXX_COMPILER ${GCCTOOLPATH}/bin/g++)
 
 # where is the target environment 
 SET(CMAKE_FIND_ROOT_PATH  ${GCCTOOLPATH})
