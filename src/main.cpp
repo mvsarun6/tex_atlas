@@ -1,11 +1,11 @@
 /**
   ******************************************************************************
   * File Name          : main.cpp
-  * Description        : 
+  * Description        : Generate Texture atlas PNG
   ******************************************************************************
   * @attention
   *
-  * Copyright (C) xxxxx.  All Rights Reserved.
+  * Copyright (C) Sarun Kumar M V [https://github.com/mvsarun6] [mvsarun6@gmail.com].  All Rights Reserved.
   *
   * Liscence info
   *
@@ -559,9 +559,10 @@ int main(int argc, char* argv[])
 
    //display(imagefiles);
    
-   /* Create output image canvas   */
 
-   //Find the minimum canvas area by looping different idx, from -MAX_TRY to +MAX_TRY times
+   /* Create output image canvas   */
+   std::cout<<"\nAnalysing image pattern for optimised texture atlas output...\n";
+      //Find the minimum canvas area by looping different idx, from -MAX_TRY to +MAX_TRY times
    int min_canvas_area_index = 0;
    int min_length = 0;
    for(int idx_try_find_min_area = -MAX_TRY; idx_try_find_min_area <= MAX_TRY; idx_try_find_min_area++)
@@ -626,7 +627,7 @@ int main(int argc, char* argv[])
     //remove the atlas png, if it was already present in the directory
     fs::remove(outfile);
     
-    display(imagefiles);
+    //display(imagefiles);
    
    //Convert the output buffer data into PNG file format and store it into output directory
     png_image exportimage;
